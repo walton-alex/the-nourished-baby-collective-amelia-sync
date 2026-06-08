@@ -378,13 +378,29 @@ function init_woocommerce(): void {
 				return $content;
 			}
 
-			$product   = wc_get_product( get_the_ID() );
-			$formatted = $product ? $product->get_price_html() : '';
+			$product_id = get_the_ID();
+			$product    = wc_get_product( $product_id );
+			$formatted  = $product ? $product->get_price_html() : '';
+			$rate       = (float) apply_filters( 'yay_currency_rate', 1 );
 
-			$savings = get_amelia_package_savings( get_the_ID() );
+			/* Package product — show its own savings. */
+			$savings = get_amelia_package_savings( $product_id );
 			if ( $savings > 0 ) {
-				$rate       = (float) apply_filters( 'yay_currency_rate', 1 );
 				$formatted .= ' <span class="tnbc-savings">(save ' . wc_price( $savings * $rate ) . ')</span>';
+			}
+
+			/* Service product — show upgrade to package option. */
+			if ( ! $savings ) {
+				$package = get_package_for_service_product( $product_id );
+				if ( $package ) {
+					$pkg_name = get_the_title( $package['product_id'] );
+					$pkg_url  = get_permalink( $package['product_id'] );
+					$formatted .= sprintf(
+						'<br/><span>or <a href="%s">book as a package</a> and save %s</span>',
+						esc_url( $pkg_url ),
+						wc_price( $package['savings'] * $rate )
+					);
+				}
 			}
 
 			return str_replace( '{{PRICE}}', $formatted, $content );

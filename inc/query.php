@@ -127,3 +127,53 @@ function get_amelia_package_savings( int $product_id ): float {
 
 	return $savings ? (float) $savings : 0.0;
 }
+
+/**
+ * Find the package product that contains a given service product.
+ *
+ * @param int $service_product_id Service product ID.
+ * @return array{product_id: int, savings: float}|null Package info or null.
+ */
+function get_package_for_service_product( int $service_product_id ): ?array {
+	$service_id = get_amelia_service_for_product( $service_product_id );
+	if ( ! $service_id ) {
+		return null;
+	}
+
+	global $wpdb;
+	$pivot_table = amelia_table( 'amelia_packages_to_services' );
+	if ( ! $pivot_table ) {
+		return null;
+	}
+
+	$package_ids = $wpdb->get_col( $wpdb->prepare(
+		"SELECT DISTINCT packageId FROM {$pivot_table} WHERE serviceId = %d",
+		$service_id
+	) );
+
+	if ( ! $package_ids ) {
+		return null;
+	}
+
+	// Find the WooCommerce product for one of these packages that has savings.
+	$products = get_posts( [
+		'post_type'      => 'product',
+		'post_status'    => 'publish',
+		'posts_per_page' => 1,
+		'fields'         => 'ids',
+		'meta_query'     => [
+			[ 'key' => '_tnbc_amelia_entity_type', 'value' => 'amelia_packages' ],
+			[ 'key' => '_tnbc_amelia_entity_id', 'value' => $package_ids, 'compare' => 'IN' ],
+			[ 'key' => '_tnbc_amelia_savings', 'value' => '0', 'compare' => '>', 'type' => 'DECIMAL' ],
+		],
+	] );
+
+	if ( ! $products ) {
+		return null;
+	}
+
+	$pkg_product_id = $products[0];
+	$savings        = (float) get_post_meta( $pkg_product_id, '_tnbc_amelia_savings', true );
+
+	return [ 'product_id' => $pkg_product_id, 'savings' => $savings ];
+}
