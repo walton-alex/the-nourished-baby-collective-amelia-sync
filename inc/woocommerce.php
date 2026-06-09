@@ -396,8 +396,9 @@ function init_woocommerce(): void {
 					$pkg_name = get_the_title( $package['product_id'] );
 					$pkg_url  = get_permalink( $package['product_id'] );
 					$formatted .= sprintf(
-						'<br/><span>or <a href="%s">book as a package</a> and save %s</span>',
+						'<br/><span>or book the <a href="%s">%s</a> bundle and save %s</span>',
 						esc_url( $pkg_url ),
+						esc_html( $pkg_name ),
 						wc_price( $package['savings'] * $rate )
 					);
 				}
